@@ -5,27 +5,39 @@
 #include "Log.hpp"
 
 namespace tk {
+void BindlessDescriptorPoolDeleter::operator()(BindlessDescriptorPool* pool) {
+	pool->_device._bindlessDescriptorPoolPool.Free(pool);
+}
+
 BindlessDescriptorPool::BindlessDescriptorPool(Device& device,
-                                               DescriptorSetAllocator& allocator,
+                                               DescriptorSetAllocator* allocator,
                                                vk::DescriptorPool pool,
                                                uint32_t totalSets,
                                                uint32_t totalDescriptors)
 		: _device(device), _allocator(allocator), _pool(pool), _totalSets(totalSets), _totalDescriptors(totalDescriptors) {}
 
-BindlessDescriptorPool::~BindlessDescriptorPool() noexcept {}
+BindlessDescriptorPool::~BindlessDescriptorPool() noexcept {
+	if (_pool) {
+		if (_internalSync) {
+			_device.DestroyDescriptorPoolNoLock(_pool);
+		} else {
+			_device.DestroyDescriptorPool(_pool);
+		}
+	}
+}
 
 bool BindlessDescriptorPool::AllocateDescriptors(uint32_t count) {
 	if (_allocatedSets >= _totalSets || _allocatedDescriptors >= _totalDescriptors) { return false; }
 
 	_allocatedSets++;
 	_allocatedDescriptors += count;
-	_set = _allocator.AllocateBindlessSet(_pool, count);
+	_set = _allocator->AllocateBindlessSet(_pool, count);
 
 	return bool(_set);
 }
 
 void BindlessDescriptorPool::Reset() {
-	if (_pool) { _allocator.ResetBindlessPool(_pool); }
+	if (_pool) { _allocator->ResetBindlessPool(_pool); }
 	_set                  = nullptr;
 	_allocatedSets        = 0;
 	_allocatedDescriptors = 0;

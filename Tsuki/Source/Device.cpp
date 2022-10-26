@@ -177,7 +177,7 @@ BindlessDescriptorPoolHandle Device::CreateBindlessDescriptorPool(BindlessResour
 	if (!pool) { return {}; }
 
 	auto bindlessPool = BindlessDescriptorPoolHandle(
-		_bindlessDescriptorPoolPool.Allocate(this, allocator, pool, setCount, descriptorCount));
+		_bindlessDescriptorPoolPool.Allocate(*this, allocator, pool, setCount, descriptorCount));
 
 	return bindlessPool;
 }
@@ -1070,6 +1070,11 @@ void Device::DestroyBuffer(vk::Buffer buffer) {
 	DestroyBufferNoLock(buffer);
 }
 
+void Device::DestroyDescriptorPool(vk::DescriptorPool pool) {
+	DeviceLock();
+	DestroyDescriptorPoolNoLock(pool);
+}
+
 void Device::DestroyImage(vk::Image image) {
 	DeviceLock();
 	DestroyImageNoLock(image);
@@ -1149,6 +1154,10 @@ void Device::SetupSwapchain(WSI& wsi) {
 
 void Device::DestroyBufferNoLock(vk::Buffer buffer) {
 	Frame().BuffersToDestroy.push_back(buffer);
+}
+
+void Device::DestroyDescriptorPoolNoLock(vk::DescriptorPool pool) {
+	Frame().DescriptorPoolsToDestroy.push_back(pool);
 }
 
 void Device::DestroyImageNoLock(vk::Image image) {
@@ -1568,12 +1577,14 @@ void Device::FrameContext::Begin() {
 	}
 
 	for (auto& buffer : BuffersToDestroy) { device.destroyBuffer(buffer); }
+	for (auto& pool : DescriptorPoolsToDestroy) { device.destroyDescriptorPool(pool); }
 	for (auto& image : ImagesToDestroy) { device.destroyImage(image); }
 	for (auto& view : ImageViewsToDestroy) { device.destroyImageView(view); }
 	for (auto& allocation : MemoryToFree) { vmaFreeMemory(Parent._allocator, allocation); }
 	for (auto& semaphore : SemaphoresToDestroy) { device.destroySemaphore(semaphore); }
 	for (auto& semaphore : SemaphoresToRecycle) { Parent.ReleaseSemaphore(semaphore); }
 	BuffersToDestroy.clear();
+	DescriptorPoolsToDestroy.clear();
 	ImagesToDestroy.clear();
 	ImageViewsToDestroy.clear();
 	MemoryToFree.clear();

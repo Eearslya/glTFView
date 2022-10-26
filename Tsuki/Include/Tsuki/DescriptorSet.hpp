@@ -31,7 +31,7 @@ class BindlessDescriptorPool
 
  public:
 	explicit BindlessDescriptorPool(Device& device,
-	                                DescriptorSetAllocator& allocator,
+	                                DescriptorSetAllocator* allocator,
 	                                vk::DescriptorPool pool,
 	                                uint32_t totalSets,
 	                                uint32_t totalDescriptors);
@@ -51,7 +51,7 @@ class BindlessDescriptorPool
 	void SetTexture(uint32_t binding, vk::ImageView view, vk::ImageLayout layout);
 
 	Device& _device;
-	DescriptorSetAllocator& _allocator;
+	DescriptorSetAllocator* _allocator;
 	vk::DescriptorPool _pool;
 	vk::DescriptorSet _set;
 

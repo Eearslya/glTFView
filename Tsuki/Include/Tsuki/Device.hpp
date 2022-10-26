@@ -115,6 +115,7 @@ class Device : public IntrusivePtrEnabled<Device, std::default_delete<Device>, H
 		std::array<uint64_t, QueueTypeCount> TimelineValues;
 
 		std::vector<vk::Buffer> BuffersToDestroy;
+		std::vector<vk::DescriptorPool> DescriptorPoolsToDestroy;
 		std::vector<vk::Image> ImagesToDestroy;
 		std::vector<vk::ImageView> ImageViewsToDestroy;
 		std::vector<vk::Fence> FencesToRecycle;
@@ -154,6 +155,7 @@ class Device : public IntrusivePtrEnabled<Device, std::default_delete<Device>, H
 	void SetupSwapchain(WSI& wsi);
 
 	void DestroyBuffer(vk::Buffer buffer);
+	void DestroyDescriptorPool(vk::DescriptorPool pool);
 	void DestroyImage(vk::Image image);
 	void DestroyImageView(vk::ImageView view);
 	void DestroySemaphore(vk::Semaphore semaphore);
@@ -166,6 +168,7 @@ class Device : public IntrusivePtrEnabled<Device, std::default_delete<Device>, H
 	RenderPass& RequestRenderPass(const RenderPassInfo& info, bool compatible = false);
 
 	void DestroyBufferNoLock(vk::Buffer buffer);
+	void DestroyDescriptorPoolNoLock(vk::DescriptorPool pool);
 	void DestroyImageNoLock(vk::Image image);
 	void DestroyImageViewNoLock(vk::ImageView view);
 	void DestroySemaphoreNoLock(vk::Semaphore semaphore);
