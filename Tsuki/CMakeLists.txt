@@ -52,13 +52,13 @@ FetchContent_MakeAvailable(glm glslang spdlog spirv-cross)
 
 set_property(TARGET Tsuki PROPERTY CXX_STANDARD 20)
 target_compile_definitions(Tsuki
-	PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE GLM_FORCE_QUAT_DATA_XYZW VK_ENABLE_BETA_EXTENSIONS VK_NO_PROTOTYPES
+	PUBLIC GLM_FORCE_DEPTH_ZERO_TO_ONE VK_ENABLE_BETA_EXTENSIONS VK_NO_PROTOTYPES
 	PRIVATE VMA_NULLABLE= VMA_NOT_NULL= VULKAN_HPP_DISPATCH_LOADER_DYNAMIC)
 target_include_directories(Tsuki
 	PUBLIC Include
 	PRIVATE Source)
 target_link_libraries(Tsuki
-	PUBLIC imgui Vulkan::Headers
+	PUBLIC glm imgui Vulkan::Headers
 	PRIVATE glslang SPIRV spdlog spirv-cross-cpp)
 
 add_subdirectory(Source)

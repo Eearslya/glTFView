@@ -1070,7 +1070,10 @@ void Model::ImportNodes(const fastgltf::Asset& gltfModel) {
 			glm::decompose(matrix, node->Scale, node->Rotation, node->Translation, skew, perspective);
 		} else {
 			node->Translation = glm::make_vec3(gltfNode.translation.data());
-			node->Rotation    = glm::make_quat(gltfNode.rotation.data());
+			node->Rotation.x  = gltfNode.rotation[0];
+			node->Rotation.y  = gltfNode.rotation[1];
+			node->Rotation.z  = gltfNode.rotation[2];
+			node->Rotation.w  = gltfNode.rotation[3];
 			node->Scale       = glm::make_vec3(gltfNode.scale.data());
 		}
 

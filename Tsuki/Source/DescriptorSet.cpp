@@ -184,4 +184,30 @@ std::pair<vk::DescriptorSet, bool> DescriptorSetAllocator::Find(uint32_t threadI
 
 	return {state.SetNodes.RequestVacant(hash)->Set, false};
 }
+
+vk::DescriptorPool DescriptorSetAllocator::AllocateBindlessPool(uint32_t setCount, uint32_t descriptorCount) {
+	if (!_bindless) { return nullptr; }
+
+	vk::DescriptorPoolSize poolSize = _poolSizes[0];
+	if (descriptorCount > poolSize.descriptorCount) { return nullptr; }
+	poolSize.descriptorCount = descriptorCount;
+
+	const vk::DescriptorPoolCreateInfo poolCI(vk::DescriptorPoolCreateFlagBits::eUpdateAfterBind, setCount, poolSize);
+
+	return _device.GetDevice().createDescriptorPool(poolCI);
+}
+
+vk::DescriptorSet DescriptorSetAllocator::AllocateBindlessSet(vk::DescriptorPool pool, uint32_t descriptorCount) {
+	if (!pool || !_bindless) { return nullptr; }
+
+	const vk::DescriptorSetVariableDescriptorCountAllocateInfo setCAI(descriptorCount);
+	const vk::DescriptorSetAllocateInfo setAI(pool, _setLayout, &setCAI);
+	auto sets = _device.GetDevice().allocateDescriptorSets(setAI);
+
+	return sets.empty() ? nullptr : sets[0];
+}
+
+void DescriptorSetAllocator::ResetBindlessPool(vk::DescriptorPool pool) {
+	_device.GetDevice().resetDescriptorPool(pool);
+}
 }  // namespace tk

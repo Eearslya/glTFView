@@ -109,6 +109,8 @@ int main(int argc, const char** argv) {
 	auto& device = wsi->GetDevice();
 	ImGuiIO& io  = ImGui::GetIO();
 
+	auto bindlessImages = device.CreateBindlessDescriptorPool(tk::BindlessResourceType::ImageFP, 1, 1024);
+
 	Camera camera;
 	camera.SetPerspective(45.0f, 1.0f, 0.01f, 100.0f);
 	camera.SetPosition({0, 0, 1});
