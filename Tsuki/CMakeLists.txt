@@ -12,7 +12,6 @@ add_library(Tsuki STATIC)
 
 if (TSUKI_DEBUG_VULKAN)
 	target_compile_definitions(Tsuki PRIVATE TSUKI_DEBUG_VULKAN)
-	target_link_libraries(Tsuki PRIVATE spdlog)
 endif()
 
 if (TSUKI_INCLUDE_GLFW)
@@ -60,6 +59,6 @@ target_include_directories(Tsuki
 	PRIVATE Source)
 target_link_libraries(Tsuki
 	PUBLIC imgui Vulkan::Headers
-	PRIVATE glslang SPIRV spirv-cross-cpp)
+	PRIVATE glslang SPIRV spdlog spirv-cross-cpp)
 
 add_subdirectory(Source)

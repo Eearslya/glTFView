@@ -614,8 +614,6 @@ int main(int argc, const char** argv) {
 		ImGui::End();
 		ImGui::PopStyleVar();
 
-		// imgui->BeginDockspace(false);
-
 		if (ImGui::BeginMainMenuBar()) {
 			if (ImGui::BeginMenu("Tools")) {
 				if (ImGui::MenuItem("Reload Shaders", "F5")) { LoadShaders(); }

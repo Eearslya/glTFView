@@ -262,7 +262,6 @@ struct ExtensionInfo {
 	bool Maintenance4            = false;
 	bool Surface                 = false;
 	bool Synchronization2        = false;
-	bool TimelineSemaphore       = false;
 	bool ValidationFeatures      = false;
 };
 struct GPUFeatures {

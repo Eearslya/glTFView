@@ -266,7 +266,7 @@ static std::unique_ptr<fastgltf::Asset> ParseGltf(const std::filesystem::path& g
 		std::cerr << "[GltfImporter] fastgltf error: " << static_cast<int>(loadError) << std::endl;
 		return nullptr;
 	}
-	loadError = loaded->parseAll();
+	loadError = loaded->parse(fastgltf::Category::All | fastgltf::Category::Animations);
 	if (loadError != fastgltf::Error::None) {
 		std::cerr << "[GltfImporter] Failed to parse mesh asset file" << gltfFile << ".\n";
 		std::cerr << "[GltfImporter] fastgltf error: " << static_cast<int>(loadError) << std::endl;

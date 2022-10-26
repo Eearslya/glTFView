@@ -1497,7 +1497,7 @@ void Device::FrameContext::Begin() {
 
 			if (semaphoreCount) {
 				const vk::SemaphoreWaitInfo waitInfo({}, semaphoreCount, semaphores.data(), values.data());
-				const auto waitResult = device.waitSemaphoresKHR(waitInfo, std::numeric_limits<uint64_t>::max());
+				const auto waitResult = device.waitSemaphores(waitInfo, std::numeric_limits<uint64_t>::max());
 				if (waitResult != vk::Result::eSuccess) {
 					Log::Error("Vulkan::Device", "Failed to wait on timeline semaphores!");
 				}

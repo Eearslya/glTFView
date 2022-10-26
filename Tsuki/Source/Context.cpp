@@ -262,10 +262,6 @@ void Context::SelectPhysicalDevice(const std::vector<const char*>& requiredDevic
 		if (!HasExtension(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)) {
 			features.unlink<vk::PhysicalDeviceSynchronization2FeaturesKHR>();
 		}
-		if (!HasExtension(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME)) {
-			features.unlink<vk::PhysicalDeviceTimelineSemaphoreFeatures>();
-			properties.unlink<vk::PhysicalDeviceTimelineSemaphoreProperties>();
-		}
 
 		gpu.getFeatures2(&features.get());
 		gpu.getProperties2(&properties.get());
@@ -351,7 +347,6 @@ void Context::CreateDevice(const std::vector<const char*>& requiredExtensions) {
 		_extensions.CalibratedTimestamps = TryExtension(VK_EXT_CALIBRATED_TIMESTAMPS_EXTENSION_NAME);
 		_extensions.Maintenance4         = TryExtension(VK_KHR_MAINTENANCE_4_EXTENSION_NAME);
 		_extensions.Synchronization2     = TryExtension(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
-		_extensions.TimelineSemaphore    = TryExtension(VK_KHR_TIMELINE_SEMAPHORE_EXTENSION_NAME);
 	}
 
 	// Find and assign all of our queues.
@@ -459,14 +454,10 @@ void Context::CreateDevice(const std::vector<const char*>& requiredExtensions) {
 			features.multiDrawIndirect = VK_TRUE;
 		}
 
-		if (_extensions.TimelineSemaphore) {
-			auto& timelineSemaphore = enabledFeaturesChain.get<vk::PhysicalDeviceTimelineSemaphoreFeatures>();
-			if (_gpuInfo.AvailableFeatures.TimelineSemaphore.timelineSemaphore == VK_TRUE) {
-				Log::Trace("Vulkan::Context", "Enabling Timeline Semaphores.");
-				timelineSemaphore.timelineSemaphore = VK_TRUE;
-			}
-		} else {
-			enabledFeaturesChain.unlink<vk::PhysicalDeviceTimelineSemaphoreFeatures>();
+		auto& timelineSemaphore = enabledFeaturesChain.get<vk::PhysicalDeviceTimelineSemaphoreFeatures>();
+		if (_gpuInfo.AvailableFeatures.TimelineSemaphore.timelineSemaphore == VK_TRUE) {
+			Log::Trace("Vulkan::Context", "Enabling Timeline Semaphores.");
+			timelineSemaphore.timelineSemaphore = VK_TRUE;
 		}
 
 		auto& shaderDrawParameters = enabledFeaturesChain.get<vk::PhysicalDeviceShaderDrawParametersFeatures>();
