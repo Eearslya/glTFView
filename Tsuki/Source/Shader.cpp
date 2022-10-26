@@ -63,7 +63,7 @@ Shader::Shader(Hash hash, Device& device, size_t codeSize, const void* code)
 				if (type.array.size() != 1) {
 					Log::Error("Vulkan::Shader", "Reflection error: Array dimension must be 1.");
 				} else if (!type.array_size_literal.front()) {
-					Log::Error("Vulkan::Shader", "Reflection error: Array dimension must be a litera.");
+					Log::Error("Vulkan::Shader", "Reflection error: Array dimension must be a literal.");
 				} else {
 					if (type.array.front() == 0) {
 						if (binding != 0) {

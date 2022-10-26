@@ -469,6 +469,7 @@ void Context::CreateDevice(const std::vector<const char*>& requiredExtensions) {
 			descriptorIndexing.runtimeDescriptorArray                    = VK_TRUE;
 			descriptorIndexing.descriptorBindingVariableDescriptorCount  = VK_TRUE;
 			descriptorIndexing.descriptorBindingPartiallyBound           = VK_TRUE;
+			_gpuInfo.EnabledBindless                                     = true;
 		}
 
 		auto& timelineSemaphore = enabledFeaturesChain.get<vk::PhysicalDeviceTimelineSemaphoreFeatures>();

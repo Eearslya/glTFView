@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common.hpp"
+#include "InternalSync.hpp"
 
 namespace tk {
 struct DescriptorSetLayout {
@@ -17,6 +18,47 @@ struct DescriptorSetLayout {
 	uint32_t UniformBufferMask                = 0;
 
 	constexpr static const uint8_t UnsizedArray = 0xff;
+};
+
+struct BindlessDescriptorPoolDeleter {
+	void operator()(BindlessDescriptorPool* pool);
+};
+
+class BindlessDescriptorPool
+		: public IntrusivePtrEnabled<BindlessDescriptorPool, BindlessDescriptorPoolDeleter, HandleCounter>,
+			public InternalSync {
+	friend struct BindlessDescriptorPoolDeleter;
+
+ public:
+	explicit BindlessDescriptorPool(Device& device,
+	                                DescriptorSetAllocator& allocator,
+	                                vk::DescriptorPool pool,
+	                                uint32_t totalSets,
+	                                uint32_t totalDescriptors);
+	~BindlessDescriptorPool() noexcept;
+
+	vk::DescriptorSet GetDescriptorSet() const {
+		return _set;
+	}
+
+	bool AllocateDescriptors(uint32_t count);
+	void Reset();
+	void SetTexture(uint32_t binding, const ImageView& view);
+	void SetTextureUnorm(uint32_t binding, const ImageView& view);
+	void SetTextureSrgb(uint32_t binding, const ImageView& view);
+
+ private:
+	void SetTexture(uint32_t binding, vk::ImageView view, vk::ImageLayout layout);
+
+	Device& _device;
+	DescriptorSetAllocator& _allocator;
+	vk::DescriptorPool _pool;
+	vk::DescriptorSet _set;
+
+	uint32_t _allocatedSets        = 0;
+	uint32_t _totalSets            = 0;
+	uint32_t _allocatedDescriptors = 0;
+	uint32_t _totalDescriptors     = 0;
 };
 
 class DescriptorSetAllocator : public HashedObject<DescriptorSetAllocator> {
@@ -39,6 +81,10 @@ class DescriptorSetAllocator : public HashedObject<DescriptorSetAllocator> {
 	void BeginFrame();
 	void Clear();
 	std::pair<vk::DescriptorSet, bool> Find(uint32_t threadIndex, Hash hash);
+
+	vk::DescriptorPool AllocateBindlessPool(uint32_t setCount, uint32_t descriptorCount);
+	vk::DescriptorSet AllocateBindlessSet(vk::DescriptorPool pool, uint32_t descriptorCount);
+	void ResetBindlessPool(vk::DescriptorPool pool);
 
  private:
 	struct DescriptorSetNode : TemporaryHashMapEnabled<DescriptorSetNode>, IntrusiveListEnabled<DescriptorSetNode> {

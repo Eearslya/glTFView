@@ -29,6 +29,7 @@ layout(set = 0, binding = 0) uniform SceneUBO {
 layout(set = 0, binding = 1) uniform samplerCube TexIrradiance;
 layout(set = 0, binding = 2) uniform samplerCube TexPrefilter;
 layout(set = 0, binding = 3) uniform sampler2D TexBrdf;
+layout(set = 0, binding = 4) uniform sampler2D Textures[];
 
 layout(set = 2, binding = 0) uniform MaterialData {
 	mat4 AlbedoTransform;

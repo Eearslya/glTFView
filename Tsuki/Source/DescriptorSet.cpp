@@ -1,9 +1,55 @@
 #include <Tsuki/DescriptorSet.hpp>
 #include <Tsuki/Device.hpp>
+#include <Tsuki/Image.hpp>
 
 #include "Log.hpp"
 
 namespace tk {
+BindlessDescriptorPool::BindlessDescriptorPool(Device& device,
+                                               DescriptorSetAllocator& allocator,
+                                               vk::DescriptorPool pool,
+                                               uint32_t totalSets,
+                                               uint32_t totalDescriptors)
+		: _device(device), _allocator(allocator), _pool(pool), _totalSets(totalSets), _totalDescriptors(totalDescriptors) {}
+
+BindlessDescriptorPool::~BindlessDescriptorPool() noexcept {}
+
+bool BindlessDescriptorPool::AllocateDescriptors(uint32_t count) {
+	if (_allocatedSets >= _totalSets || _allocatedDescriptors >= _totalDescriptors) { return false; }
+
+	_allocatedSets++;
+	_allocatedDescriptors += count;
+	_set = _allocator.AllocateBindlessSet(_pool, count);
+
+	return bool(_set);
+}
+
+void BindlessDescriptorPool::Reset() {
+	if (_pool) { _allocator.ResetBindlessPool(_pool); }
+	_set                  = nullptr;
+	_allocatedSets        = 0;
+	_allocatedDescriptors = 0;
+}
+
+void BindlessDescriptorPool::SetTexture(uint32_t binding, const ImageView& view) {
+	SetTexture(binding, view.GetFloatView(), view.GetImage().GetLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
+}
+
+void BindlessDescriptorPool::SetTextureUnorm(uint32_t binding, const ImageView& view) {
+	SetTexture(binding, view.GetIntegerView(), view.GetImage().GetLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
+}
+
+void BindlessDescriptorPool::SetTextureSrgb(uint32_t binding, const ImageView& view) {
+	SetTexture(binding, view.GetFloatView(), view.GetImage().GetLayout(vk::ImageLayout::eShaderReadOnlyOptimal));
+}
+
+void BindlessDescriptorPool::SetTexture(uint32_t binding, vk::ImageView view, vk::ImageLayout layout) {
+	const vk::DescriptorImageInfo imageInfo(nullptr, view, layout);
+	const vk::WriteDescriptorSet write(
+		_set, 0, binding, 1, vk::DescriptorType::eSampledImage, &imageInfo, nullptr, nullptr);
+	_device.GetDevice().updateDescriptorSets(write, nullptr);
+}
+
 DescriptorSetAllocator::DescriptorSetNode::DescriptorSetNode(vk::DescriptorSet set) : Set(set) {}
 
 DescriptorSetAllocator::DescriptorSetAllocator(Hash hash,

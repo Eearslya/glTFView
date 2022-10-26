@@ -16,6 +16,8 @@ struct ImageInitialData {
 
 class Device : public IntrusivePtrEnabled<Device, std::default_delete<Device>, HandleCounter> {
  public:
+	friend class BindlessDescriptorPool;
+	friend struct BindlessDescriptorPoolDeleter;
 	friend class Buffer;
 	friend struct BufferDeleter;
 	friend class CommandBuffer;
@@ -50,6 +52,9 @@ class Device : public IntrusivePtrEnabled<Device, std::default_delete<Device>, H
 		return _gpuInfo;
 	}
 
+	BindlessDescriptorPoolHandle CreateBindlessDescriptorPool(BindlessResourceType type,
+	                                                          uint32_t setCount,
+	                                                          uint32_t descriptorCount);
 	BufferHandle CreateBuffer(const BufferCreateInfo& bufferCI, const void* initialData = nullptr);
 	ImageHandle CreateImage(const ImageCreateInfo& imageCI, const ImageInitialData* initialData = nullptr);
 	ImageViewHandle CreateImageView(const ImageViewCreateInfo& viewCI);
@@ -142,6 +147,7 @@ class Device : public IntrusivePtrEnabled<Device, std::default_delete<Device>, H
 	void DestroyTimelineSemaphores();
 	FrameContext& Frame();
 	QueueType GetQueueType(CommandBufferType cbType) const;
+	void CreateBindless();
 	void ReleaseFence(vk::Fence fence);
 	void ReleaseSemaphore(vk::Semaphore semaphore);
 	void SetAcquireSemaphore(uint32_t imageIndex, SemaphoreHandle& semaphore);
@@ -216,6 +222,7 @@ class Device : public IntrusivePtrEnabled<Device, std::default_delete<Device>, H
 	uint32_t _swapchainIndex = std::numeric_limits<uint32_t>::max();
 	SemaphoreHandle _swapchainRelease;
 
+	VulkanObjectPool<BindlessDescriptorPool> _bindlessDescriptorPoolPool;
 	VulkanObjectPool<Buffer> _bufferPool;
 	VulkanObjectPool<CommandBuffer> _commandBufferPool;
 	VulkanObjectPool<Fence> _fencePool;
@@ -230,6 +237,8 @@ class Device : public IntrusivePtrEnabled<Device, std::default_delete<Device>, H
 	VulkanCache<Sampler> _samplers;
 	VulkanCache<Shader> _shaders;
 
+	DescriptorSetAllocator* _bindlessSampledImageAllocator      = nullptr;
+	DescriptorSetAllocator* _bindlessSampledFloatImageAllocator = nullptr;
 	std::array<Sampler*, StockSamplerCount> _stockSamplers;
 };
 }  // namespace tk

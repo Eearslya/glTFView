@@ -152,6 +152,36 @@ Device::~Device() noexcept {
 	DestroyTimelineSemaphores();
 }
 
+BindlessDescriptorPoolHandle Device::CreateBindlessDescriptorPool(BindlessResourceType type,
+                                                                  uint32_t setCount,
+                                                                  uint32_t descriptorCount) {
+	if (!_gpuInfo.EnabledBindless) { return {}; }
+
+	DescriptorSetAllocator* allocator = nullptr;
+	switch (type) {
+		case BindlessResourceType::ImageFP:
+			allocator = _bindlessSampledFloatImageAllocator;
+			break;
+
+		case BindlessResourceType::ImageInt:
+			allocator = _bindlessSampledImageAllocator;
+			break;
+
+		default:
+			break;
+	}
+
+	if (allocator == nullptr) { return {}; }
+
+	vk::DescriptorPool pool = allocator->AllocateBindlessPool(setCount, descriptorCount);
+	if (!pool) { return {}; }
+
+	auto bindlessPool = BindlessDescriptorPoolHandle(
+		_bindlessDescriptorPoolPool.Allocate(this, allocator, pool, setCount, descriptorCount));
+
+	return bindlessPool;
+}
+
 BufferHandle Device::CreateBuffer(const BufferCreateInfo& createInfo, const void* initialData) {
 	BufferCreateInfo actualCI = createInfo;
 	actualCI.Usage |= vk::BufferUsageFlagBits::eTransferDst | vk::BufferUsageFlagBits::eTransferSrc;
@@ -1009,6 +1039,22 @@ QueueType Device::GetQueueType(CommandBufferType cbType) const {
 			return QueueType::Graphics;
 		}
 	}
+}
+
+void Device::CreateBindless() {
+	if (!_gpuInfo.EnabledBindless) { return; }
+
+	DescriptorSetLayout layout;
+	std::fill(std::begin(layout.ArraySizes), std::end(layout.ArraySizes), 1);
+	layout.ArraySizes[0]     = DescriptorSetLayout::UnsizedArray;
+	layout.SeparateImageMask = 1 << 0;
+
+	const uint32_t stagesForBindings[MaxDescriptorBindings] = {uint32_t(vk::ShaderStageFlagBits::eAll)};
+
+	_bindlessSampledImageAllocator = RequestDescriptorSetAllocator(layout, stagesForBindings);
+
+	layout.FloatMask                    = 1 << 0;
+	_bindlessSampledFloatImageAllocator = RequestDescriptorSetAllocator(layout, stagesForBindings);
 }
 
 void Device::ReleaseFence(vk::Fence fence) {

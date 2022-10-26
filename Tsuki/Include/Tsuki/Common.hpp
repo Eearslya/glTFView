@@ -14,6 +14,8 @@
 
 namespace tk {
 // Forward declarations.
+class BindlessDescriptorPool;
+struct BindlessDescriptorPoolDeleter;
 class Buffer;
 struct BufferCreateInfo;
 struct BufferDeleter;
@@ -72,14 +74,15 @@ template <typename T>
 using HashedObject = IntrusiveHashMapEnabled<T>;
 
 // Handle declarations.
-using BufferHandle        = IntrusivePtr<Buffer>;
-using CommandBufferHandle = IntrusivePtr<CommandBuffer>;
-using ContextHandle       = IntrusivePtr<Context>;
-using DeviceHandle        = IntrusivePtr<Device>;
-using FenceHandle         = IntrusivePtr<Fence>;
-using ImageHandle         = IntrusivePtr<Image>;
-using ImageViewHandle     = IntrusivePtr<ImageView>;
-using SemaphoreHandle     = IntrusivePtr<Semaphore>;
+using BindlessDescriptorPoolHandle = IntrusivePtr<BindlessDescriptorPool>;
+using BufferHandle                 = IntrusivePtr<Buffer>;
+using CommandBufferHandle          = IntrusivePtr<CommandBuffer>;
+using ContextHandle                = IntrusivePtr<Context>;
+using DeviceHandle                 = IntrusivePtr<Device>;
+using FenceHandle                  = IntrusivePtr<Fence>;
+using ImageHandle                  = IntrusivePtr<Image>;
+using ImageViewHandle              = IntrusivePtr<ImageView>;
+using SemaphoreHandle              = IntrusivePtr<Semaphore>;
 
 // Enums and constants.
 constexpr static const int DescriptorSetsPerPool      = 16;
@@ -94,6 +97,20 @@ constexpr static const int MaxVertexBuffers           = 8;
 template <typename T>
 static const char* VulkanEnumToString(const T value) {
 	return nullptr;
+}
+
+enum class BindlessResourceType { ImageFP, ImageInt };
+constexpr static const int BindlessResourceTypeCount = 2;
+template <>
+const char* VulkanEnumToString<BindlessResourceType>(const BindlessResourceType value) {
+	switch (value) {
+		case BindlessResourceType::ImageFP:
+			return "ImageFP";
+		case BindlessResourceType::ImageInt:
+			return "ImageInt";
+	}
+
+	return "Unknown";
 }
 
 enum class QueueType { Graphics, Transfer, Compute };
@@ -293,6 +310,7 @@ struct GPUInfo {
 	GPUProperties Properties = {};
 	std::vector<vk::QueueFamilyProperties> QueueFamilies;
 
+	bool EnabledBindless        = false;
 	GPUFeatures EnabledFeatures = {};
 };
 struct QueueInfo {
