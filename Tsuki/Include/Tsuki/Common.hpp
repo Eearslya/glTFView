@@ -266,6 +266,7 @@ struct ExtensionInfo {
 };
 struct GPUFeatures {
 	vk::PhysicalDeviceFeatures Features;
+	vk::PhysicalDeviceDescriptorIndexingFeatures DescriptorIndexing;
 	vk::PhysicalDeviceMaintenance4FeaturesKHR Maintenance4;
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 	vk::PhysicalDevicePortabilitySubsetFeaturesKHR PortabilitySubset;
@@ -276,6 +277,7 @@ struct GPUFeatures {
 };
 struct GPUProperties {
 	vk::PhysicalDeviceProperties Properties;
+	vk::PhysicalDeviceDescriptorIndexingProperties DescriptorIndexing;
 	vk::PhysicalDeviceDriverProperties Driver;
 	vk::PhysicalDeviceMaintenance4PropertiesKHR Maintenance4;
 #ifdef VK_ENABLE_BETA_EXTENSIONS

@@ -229,6 +229,7 @@ void Context::SelectPhysicalDevice(const std::vector<const char*>& requiredDevic
 
 		// Enumerate all of the properties and features.
 		vk::StructureChain<vk::PhysicalDeviceFeatures2,
+		                   vk::PhysicalDeviceDescriptorIndexingFeatures,
 		                   vk::PhysicalDeviceMaintenance4FeaturesKHR,
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 		                   vk::PhysicalDevicePortabilitySubsetFeaturesKHR,
@@ -238,6 +239,7 @@ void Context::SelectPhysicalDevice(const std::vector<const char*>& requiredDevic
 		                   vk::PhysicalDeviceShaderDrawParametersFeatures>
 			features;
 		vk::StructureChain<vk::PhysicalDeviceProperties2,
+		                   vk::PhysicalDeviceDescriptorIndexingProperties,
 		                   vk::PhysicalDeviceDriverProperties,
 		                   vk::PhysicalDeviceMaintenance4PropertiesKHR,
 #ifdef VK_ENABLE_BETA_EXTENSIONS
@@ -266,8 +268,9 @@ void Context::SelectPhysicalDevice(const std::vector<const char*>& requiredDevic
 		gpu.getFeatures2(&features.get());
 		gpu.getProperties2(&properties.get());
 
-		gpuInfo.AvailableFeatures.Features     = features.get().features;
-		gpuInfo.AvailableFeatures.Maintenance4 = features.get<vk::PhysicalDeviceMaintenance4FeaturesKHR>();
+		gpuInfo.AvailableFeatures.Features           = features.get().features;
+		gpuInfo.AvailableFeatures.DescriptorIndexing = features.get<vk::PhysicalDeviceDescriptorIndexingFeatures>();
+		gpuInfo.AvailableFeatures.Maintenance4       = features.get<vk::PhysicalDeviceMaintenance4FeaturesKHR>();
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 		gpuInfo.AvailableFeatures.PortabilitySubset = features.get<vk::PhysicalDevicePortabilitySubsetFeaturesKHR>();
 #endif
@@ -275,9 +278,10 @@ void Context::SelectPhysicalDevice(const std::vector<const char*>& requiredDevic
 		gpuInfo.AvailableFeatures.TimelineSemaphore    = features.get<vk::PhysicalDeviceTimelineSemaphoreFeatures>();
 		gpuInfo.AvailableFeatures.ShaderDrawParameters = features.get<vk::PhysicalDeviceShaderDrawParametersFeatures>();
 
-		gpuInfo.Properties.Properties   = properties.get().properties;
-		gpuInfo.Properties.Driver       = properties.get<vk::PhysicalDeviceDriverProperties>();
-		gpuInfo.Properties.Maintenance4 = properties.get<vk::PhysicalDeviceMaintenance4PropertiesKHR>();
+		gpuInfo.Properties.Properties         = properties.get().properties;
+		gpuInfo.Properties.DescriptorIndexing = properties.get<vk::PhysicalDeviceDescriptorIndexingProperties>();
+		gpuInfo.Properties.Driver             = properties.get<vk::PhysicalDeviceDriverProperties>();
+		gpuInfo.Properties.Maintenance4       = properties.get<vk::PhysicalDeviceMaintenance4PropertiesKHR>();
 #ifdef VK_ENABLE_BETA_EXTENSIONS
 		gpuInfo.Properties.PortabilitySubset = properties.get<vk::PhysicalDevicePortabilitySubsetPropertiesKHR>();
 #endif
@@ -421,6 +425,7 @@ void Context::CreateDevice(const std::vector<const char*>& requiredExtensions) {
 
 	// Determine what features we want to enable.
 	vk::StructureChain<vk::PhysicalDeviceFeatures2,
+	                   vk::PhysicalDeviceDescriptorIndexingFeatures,
 	                   vk::PhysicalDeviceMaintenance4FeaturesKHR,
 	                   vk::PhysicalDeviceTimelineSemaphoreFeatures,
 	                   vk::PhysicalDeviceShaderDrawParametersFeatures>
@@ -452,6 +457,18 @@ void Context::CreateDevice(const std::vector<const char*>& requiredExtensions) {
 		if (_gpuInfo.AvailableFeatures.Features.multiDrawIndirect == VK_TRUE) {
 			Log::Trace("Vulkan::Context", "Enabling multi-draw indirect.");
 			features.multiDrawIndirect = VK_TRUE;
+		}
+
+		auto& descriptorIndexing = enabledFeaturesChain.get<vk::PhysicalDeviceDescriptorIndexingFeatures>();
+		if (_gpuInfo.AvailableFeatures.DescriptorIndexing.shaderSampledImageArrayNonUniformIndexing == VK_TRUE &&
+		    _gpuInfo.AvailableFeatures.DescriptorIndexing.runtimeDescriptorArray == VK_TRUE &&
+		    _gpuInfo.AvailableFeatures.DescriptorIndexing.descriptorBindingVariableDescriptorCount == VK_TRUE &&
+		    _gpuInfo.AvailableFeatures.DescriptorIndexing.descriptorBindingPartiallyBound == VK_TRUE) {
+			Log::Trace("Vulkan::Context", "Enabling Descriptor Indexing.");
+			descriptorIndexing.shaderSampledImageArrayNonUniformIndexing = VK_TRUE;
+			descriptorIndexing.runtimeDescriptorArray                    = VK_TRUE;
+			descriptorIndexing.descriptorBindingVariableDescriptorCount  = VK_TRUE;
+			descriptorIndexing.descriptorBindingPartiallyBound           = VK_TRUE;
 		}
 
 		auto& timelineSemaphore = enabledFeaturesChain.get<vk::PhysicalDeviceTimelineSemaphoreFeatures>();
