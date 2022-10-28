@@ -110,6 +110,8 @@ int main(int argc, const char** argv) {
 	ImGuiIO& io  = ImGui::GetIO();
 
 	auto bindlessImages = device.CreateBindlessDescriptorPool(tk::BindlessResourceType::ImageFP, 1, 1024);
+	bindlessImages->AllocateDescriptors(1024);
+	uint32_t nextBindless = 0;
 
 	Camera camera;
 	camera.SetPerspective(45.0f, 1.0f, 0.01f, 100.0f);
@@ -222,6 +224,10 @@ int main(int argc, const char** argv) {
 		std::fill(pixels, pixels + pixelCount, 0xffffffff);
 		whiteImage = device.CreateImage(imageCI2D, initialImages);
 	}
+	uint32_t bindlessBlack = nextBindless++;
+	uint32_t bindlessWhite = nextBindless++;
+	bindlessImages->SetTexture(bindlessBlack, *blackImage->GetView());
+	bindlessImages->SetTexture(bindlessWhite, *whiteImage->GetView());
 
 	// Default Buffers
 	{
@@ -258,6 +264,10 @@ int main(int argc, const char** argv) {
 			std::cout << "Loading glTF model " << gltfPath.string() << std::endl;
 			auto newModel = std::make_unique<Model>(wsi->GetDevice(), gltfPath);
 			model         = std::move(newModel);
+			for (auto& texture : model->Textures) {
+				texture->BoundIndex = nextBindless++;
+				bindlessImages->SetTexture(texture->BoundIndex, *texture->Image->Image->GetView());
+			}
 		} catch (const std::exception& e) {
 			std::cerr << "Failed to load model from '" << gltfPath.string() << "': " << e.what() << std::endl;
 			return;
@@ -458,6 +468,8 @@ int main(int argc, const char** argv) {
 						const auto* material = submesh.Material;
 						material->Update(device);
 						cmd->PushConstants(&pushConstant, 0, sizeof(PushConstant));
+						cmd->SetSampler(0, 4, device.RequestSampler(tk::StockSampler::LinearWrap));
+						cmd->SetBindless(3, bindlessImages->GetDescriptorSet());
 
 						cmd->SetUniformBuffer(2, 0, *material->DataBuffer);
 						cmd->SetTexture(2,

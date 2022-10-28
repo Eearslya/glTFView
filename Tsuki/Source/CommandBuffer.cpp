@@ -419,6 +419,11 @@ void CommandBuffer::PushConstants(const void* data, vk::DeviceSize offset, vk::D
 	_dirty |= CommandBufferDirtyFlagBits::PushConstants;
 }
 
+void CommandBuffer::SetBindless(uint32_t set, vk::DescriptorSet descriptorSet) {
+	_bindlessSets[set] = descriptorSet;
+	_dirtyDescriptorSets |= 1u << set;
+}
+
 void CommandBuffer::SetIndexBuffer(const Buffer& buffer, vk::DeviceSize offset, vk::IndexType indexType) {
 	if (_indexBuffer.Buffer == buffer.GetBuffer() && _indexBuffer.Offset == offset &&
 	    _indexBuffer.IndexType == indexType) {
@@ -855,6 +860,18 @@ void CommandBuffer::FlushDescriptorSets() {
 	uint32_t setUpdate = layout.DescriptorSetMask & _dirtyDescriptorSets;
 	ForEachBit(setUpdate, [&](uint32_t bit) {
 		const auto& setLayout = layout.SetLayouts[bit];
+
+		if (layout.BindlessDescriptorSetMask & (1u << bit)) {
+			_commandBuffer.bindDescriptorSets(
+				_actualRenderPass ? vk::PipelineBindPoint::eGraphics : vk::PipelineBindPoint::eCompute,
+				_pipelineLayout,
+				bit,
+				_bindlessSets[bit],
+				{});
+
+			return;
+		}
+
 		Hasher h;
 		h(setLayout.FloatMask);
 
@@ -886,6 +903,10 @@ void CommandBuffer::FlushDescriptorSets() {
 				h(_descriptorBinding.Sets[bit].SecondaryCookies[binding + i]);
 				h(_descriptorBinding.Sets[bit].Bindings[binding + i].Image.Float.imageLayout);
 			}
+		});
+		ForEachBit(setLayout.SamplerMask, [&](uint32_t binding) {
+			const auto arraySize = setLayout.ArraySizes[binding];
+			for (uint32_t i = 0; i < arraySize; ++i) { h(_descriptorBinding.Sets[bit].Cookies[binding + i]); }
 		});
 
 		const auto hash = h.Get();
@@ -955,6 +976,20 @@ void CommandBuffer::FlushDescriptorSets() {
 				}
 			});
 
+			ForEachBit(setLayout.SamplerMask, [&](uint32_t binding) {
+				const auto arraySize = setLayout.ArraySizes[binding];
+				for (uint32_t i = 0; i < arraySize; ++i) {
+					writes.push_back(vk::WriteDescriptorSet(allocated.first,
+					                                        binding,
+					                                        i,
+					                                        1,
+					                                        vk::DescriptorType::eSampler,
+					                                        &_descriptorBinding.Sets[bit].Bindings[binding + i].Image.Float,
+					                                        nullptr,
+					                                        nullptr));
+				}
+			});
+
 			_device.GetDevice().updateDescriptorSets(writes, {});
 		}
 
@@ -995,121 +1030,7 @@ bool CommandBuffer::FlushRenderState(bool synchronous) {
 	if (!_pipeline) { return false; }
 
 	// Flush descriptor sets.
-	{
-		const auto& layout = _programLayout->GetResourceLayout();
-
-		uint32_t setUpdate = layout.DescriptorSetMask & _dirtyDescriptorSets;
-		ForEachBit(setUpdate, [&](uint32_t bit) {
-			const auto& setLayout = layout.SetLayouts[bit];
-			Hasher h;
-			h(setLayout.FloatMask);
-
-			ForEachBit(setLayout.InputAttachmentMask, [&](uint32_t binding) {
-				const auto arraySize = setLayout.ArraySizes[binding];
-				for (uint32_t i = 0; i < arraySize; ++i) {
-					h(_descriptorBinding.Sets[bit].Cookies[binding + i]);
-					h(_descriptorBinding.Sets[bit].Bindings[binding + i].Image.Float.imageLayout);
-				}
-			});
-			ForEachBit(setLayout.StorageBufferMask, [&](uint32_t binding) {
-				const auto arraySize = setLayout.ArraySizes[binding];
-				for (uint32_t i = 0; i < arraySize; ++i) {
-					h(_descriptorBinding.Sets[bit].Cookies[binding + i]);
-					h(_descriptorBinding.Sets[bit].Bindings[binding + i].Buffer.range);
-				}
-			});
-			ForEachBit(setLayout.UniformBufferMask, [&](uint32_t binding) {
-				const auto arraySize = setLayout.ArraySizes[binding];
-				for (uint32_t i = 0; i < arraySize; ++i) {
-					h(_descriptorBinding.Sets[bit].Cookies[binding + i]);
-					h(_descriptorBinding.Sets[bit].Bindings[binding + i].Buffer.range);
-				}
-			});
-			ForEachBit(setLayout.SampledImageMask, [&](uint32_t binding) {
-				const auto arraySize = setLayout.ArraySizes[binding];
-				for (uint32_t i = 0; i < arraySize; ++i) {
-					h(_descriptorBinding.Sets[bit].Cookies[binding + i]);
-					h(_descriptorBinding.Sets[bit].SecondaryCookies[binding + i]);
-					h(_descriptorBinding.Sets[bit].Bindings[binding + i].Image.Float.imageLayout);
-				}
-			});
-
-			const auto hash = h.Get();
-			auto allocated  = _programLayout->GetAllocator(bit)->Find(_threadIndex, hash);
-
-			// If we didn't get an existing set, we need to write it.
-			if (!allocated.second) {
-				std::vector<vk::WriteDescriptorSet> writes;
-
-				ForEachBit(setLayout.InputAttachmentMask, [&](uint32_t binding) {
-					const auto arraySize = setLayout.ArraySizes[binding];
-					for (uint32_t i = 0; i < arraySize; ++i) {
-						writes.push_back(
-							vk::WriteDescriptorSet(allocated.first,
-						                         binding,
-						                         i,
-						                         1,
-						                         vk::DescriptorType::eInputAttachment,
-						                         (setLayout.FloatMask & (1u << binding)
-						                            ? &_descriptorBinding.Sets[bit].Bindings[binding + i].Image.Float
-						                            : &_descriptorBinding.Sets[bit].Bindings[binding + i].Image.Integer),
-						                         nullptr,
-						                         nullptr));
-					}
-				});
-
-				ForEachBit(setLayout.StorageBufferMask, [&](uint32_t binding) {
-					const auto arraySize = setLayout.ArraySizes[binding];
-					for (uint32_t i = 0; i < arraySize; ++i) {
-						writes.push_back(vk::WriteDescriptorSet(allocated.first,
-						                                        binding,
-						                                        i,
-						                                        1,
-						                                        vk::DescriptorType::eStorageBuffer,
-						                                        nullptr,
-						                                        &_descriptorBinding.Sets[bit].Bindings[binding + i].Buffer,
-						                                        nullptr));
-					}
-				});
-
-				ForEachBit(setLayout.UniformBufferMask, [&](uint32_t binding) {
-					const auto arraySize = setLayout.ArraySizes[binding];
-					for (uint32_t i = 0; i < arraySize; ++i) {
-						writes.push_back(vk::WriteDescriptorSet(allocated.first,
-						                                        binding,
-						                                        i,
-						                                        1,
-						                                        vk::DescriptorType::eUniformBuffer,
-						                                        nullptr,
-						                                        &_descriptorBinding.Sets[bit].Bindings[binding + i].Buffer,
-						                                        nullptr));
-					}
-				});
-
-				ForEachBit(setLayout.SampledImageMask, [&](uint32_t binding) {
-					const auto arraySize = setLayout.ArraySizes[binding];
-					for (uint32_t i = 0; i < arraySize; ++i) {
-						writes.push_back(
-							vk::WriteDescriptorSet(allocated.first,
-						                         binding,
-						                         i,
-						                         1,
-						                         vk::DescriptorType::eCombinedImageSampler,
-						                         (setLayout.FloatMask & (1u << binding)
-						                            ? &_descriptorBinding.Sets[bit].Bindings[binding + i].Image.Float
-						                            : &_descriptorBinding.Sets[bit].Bindings[binding + i].Image.Integer),
-						                         nullptr,
-						                         nullptr));
-					}
-				});
-
-				_device.GetDevice().updateDescriptorSets(writes, {});
-			}
-
-			_commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, _pipelineLayout, bit, allocated.first, {});
-		});
-		_dirtyDescriptorSets &= ~setUpdate;
-	}
+	FlushDescriptorSets();
 
 	if (_dirty & CommandBufferDirtyFlagBits::PushConstants) {
 		const auto& range = _programLayout->GetResourceLayout().PushConstantRange;

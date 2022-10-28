@@ -99,8 +99,9 @@ struct Sampler {
 };
 
 struct Texture {
-	Image* Image     = nullptr;
-	Sampler* Sampler = nullptr;
+	Image* Image       = nullptr;
+	Sampler* Sampler   = nullptr;
+	int32_t BoundIndex = -1;
 };
 
 struct MaterialData {
@@ -113,6 +114,11 @@ struct MaterialData {
 	alignas(16) glm::vec4 BaseColorFactor = glm::vec4(1, 1, 1, 1);
 	alignas(16) glm::vec4 EmissiveFactor  = glm::vec4(0, 0, 0, 0);
 
+	int AlbedoIndex       = -1;
+	int NormalIndex       = -1;
+	int PBRIndex          = -1;
+	int OcclusionIndex    = -1;
+	int EmissiveIndex     = -1;
 	int AlbedoUV          = -1;
 	int NormalUV          = -1;
 	int PBRUV             = -1;

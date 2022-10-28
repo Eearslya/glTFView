@@ -71,6 +71,12 @@ DescriptorSetAllocator::DescriptorSetAllocator(Hash hash,
 		: HashedObject<DescriptorSetAllocator>(hash), _device(device) {
 	_bindless = layout.ArraySizes[0] == DescriptorSetLayout::UnsizedArray;
 
+	const vk::DescriptorBindingFlags bindingFlags = vk::DescriptorBindingFlagBits::ePartiallyBound |
+	                                                vk::DescriptorBindingFlagBits::eUpdateAfterBind |
+	                                                vk::DescriptorBindingFlagBits::eVariableDescriptorCount;
+	const vk::DescriptorSetLayoutBindingFlagsCreateInfo setBindingFlags(bindingFlags);
+	vk::DescriptorSetLayoutCreateInfo layoutCI;
+
 	if (!_bindless) {
 		// const uint32_t threadCount = Threading::Get()->GetThreadCount();
 		const uint32_t threadCount = 1;
@@ -79,12 +85,17 @@ DescriptorSetAllocator::DescriptorSetAllocator(Hash hash,
 
 	std::vector<vk::DescriptorSetLayoutBinding> bindings;
 
+	if (_bindless) {
+		layoutCI.flags |= vk::DescriptorSetLayoutCreateFlagBits::eUpdateAfterBindPool;
+		layoutCI.setPNext(&setBindingFlags);
+	}
+
 	for (uint32_t binding = 0; binding < MaxDescriptorBindings; ++binding) {
 		const auto stages = static_cast<vk::ShaderStageFlags>(stagesForBindings[binding]);
 		if (!stages) { continue; }
 
-		const uint32_t arraySize     = layout.ArraySizes[binding];
-		const uint32_t poolArraySize = arraySize * DescriptorSetsPerPool;
+		const uint32_t arraySize     = _bindless ? MaxBindlessDescriptors : layout.ArraySizes[binding];
+		const uint32_t poolArraySize = _bindless ? arraySize : arraySize * DescriptorSetsPerPool;
 
 		uint32_t types = 0;
 
@@ -130,9 +141,11 @@ DescriptorSetAllocator::DescriptorSetAllocator(Hash hash,
 		}
 	}
 
-	const vk::DescriptorSetLayoutCreateInfo layoutCI({}, bindings);
-	_setLayout = _device.GetDevice().createDescriptorSetLayout(layoutCI);
-	Log::Trace("Vulkan", "Descriptor Set Layout created.");
+	if (!bindings.empty()) {
+		layoutCI.setBindings(bindings);
+		_setLayout = _device.GetDevice().createDescriptorSetLayout(layoutCI);
+		Log::Trace("Vulkan", "Descriptor Set Layout created.");
+	}
 }
 
 DescriptorSetAllocator::~DescriptorSetAllocator() noexcept {
@@ -200,7 +213,7 @@ vk::DescriptorPool DescriptorSetAllocator::AllocateBindlessPool(uint32_t setCoun
 vk::DescriptorSet DescriptorSetAllocator::AllocateBindlessSet(vk::DescriptorPool pool, uint32_t descriptorCount) {
 	if (!pool || !_bindless) { return nullptr; }
 
-	const vk::DescriptorSetVariableDescriptorCountAllocateInfo setCAI(descriptorCount);
+	const vk::DescriptorSetVariableDescriptorCountAllocateInfo setCAI(1, &descriptorCount);
 	const vk::DescriptorSetAllocateInfo setAI(pool, _setLayout, &setCAI);
 	auto sets = _device.GetDevice().allocateDescriptorSets(setAI);
 

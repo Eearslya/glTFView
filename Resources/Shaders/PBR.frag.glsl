@@ -1,5 +1,7 @@
 #version 450 core
 
+#extension GL_EXT_nonuniform_qualifier : require
+
 const float Epsilon = 0.00001;
 const float Pi = 3.141592;
 const int ShadowCascadeCount = 4;
@@ -29,6 +31,7 @@ layout(set = 0, binding = 0) uniform SceneUBO {
 layout(set = 0, binding = 1) uniform samplerCube TexIrradiance;
 layout(set = 0, binding = 2) uniform samplerCube TexPrefilter;
 layout(set = 0, binding = 3) uniform sampler2D TexBrdf;
+layout(set = 0, binding = 4) uniform sampler BindlessSampler;
 
 layout(set = 2, binding = 0) uniform MaterialData {
 	mat4 AlbedoTransform;
@@ -39,6 +42,12 @@ layout(set = 2, binding = 0) uniform MaterialData {
 
 	vec4 BaseColorFactor;
 	vec4 EmissiveFactor;
+
+	int AlbedoIndex;
+	int NormalIndex;
+	int PBRIndex;
+	int OcclusionIndex;
+	int EmissiveIndex;
 
 	int AlbedoUV;
 	int NormalUV;
@@ -57,6 +66,8 @@ layout(set = 2, binding = 2) uniform sampler2D TexNormal;
 layout(set = 2, binding = 3) uniform sampler2D TexPBR;
 layout(set = 2, binding = 4) uniform sampler2D TexOcclusion;
 layout(set = 2, binding = 5) uniform sampler2D TexEmissive;
+
+layout(set = 3, binding = 0) uniform texture2D BindlessTextures[];
 
 layout(push_constant) uniform PushConstant {
 	mat4 Model;
@@ -147,7 +158,7 @@ void main() {
 	vec4 baseColor = Material.BaseColorFactor * In.Color0;
 	if (Material.AlbedoUV >= 0) {
 		vec2 uvAlbedo = (mat3(Material.AlbedoTransform) * vec3(Material.AlbedoUV == 0 ? In.UV0 : In.UV1, 1)).xy;
-		baseColor *= texture(TexAlbedo, uvAlbedo);
+		baseColor *= texture(nonuniformEXT(sampler2D(BindlessTextures[Material.AlbedoIndex], BindlessSampler)), uvAlbedo);
 	}
 	if (Material.AlphaMode == 1 && baseColor.a < Material.AlphaCutoff) { discard; }
 
@@ -155,7 +166,7 @@ void main() {
 	float roughness = Material.RoughnessFactor;
 	if (Material.PBRUV >= 0) {
 		vec2 uvPBR = (mat3(Material.PBRTransform) * vec3(Material.PBRUV == 0 ? In.UV0 : In.UV1, 1)).xy;
-		vec4 metalRough = texture(TexPBR, uvPBR);
+		vec4 metalRough = texture(nonuniformEXT(sampler2D(BindlessTextures[Material.PBRIndex], BindlessSampler)), uvPBR);
 		metallic *= metalRough.b;
 		roughness *= metalRough.g;
 	}
@@ -166,7 +177,7 @@ void main() {
 	PBR.N = normalize(In.NormalMat[2]);
 	if (Material.NormalUV >= 0) {
 		vec2 uvNormal = (mat3(Material.NormalTransform) * vec3(Material.NormalUV == 0 ? In.UV0 : In.UV1, 1)).xy;
-		PBR.N = normalize(textureLod(TexNormal, uvNormal, 0).rgb * 2.0f - 1.0f);
+		PBR.N = normalize(textureLod(nonuniformEXT(sampler2D(BindlessTextures[Material.NormalIndex], BindlessSampler)), uvNormal, 0).rgb * 2.0f - 1.0f);
 		PBR.N = normalize(In.NormalMat * PBR.N);
 	}
 	vec3 V = normalize(Scene.ViewPosition.xyz - In.WorldPos);
@@ -201,13 +212,13 @@ void main() {
 
 	if (Material.OcclusionUV >= 0) {
 		vec2 uvOcclusion = (mat3(Material.OcclusionTransform) * vec3(Material.OcclusionUV == 0 ? In.UV0 : In.UV1, 1)).xy;
-		float occSample = texture(TexOcclusion, uvOcclusion).r;
+		float occSample = texture(nonuniformEXT(sampler2D(BindlessTextures[Material.OcclusionIndex], BindlessSampler)), uvOcclusion).r;
 		color = mix(color, color * occSample, Material.OcclusionFactor);
 	}
 
 	if (Material.EmissiveUV >= 0) {
 		vec2 uvEmissive = (mat3(Material.EmissiveTransform) * vec3(Material.EmissiveUV == 0 ? In.UV0 : In.UV1, 1)).xy;
-		vec3 emission = texture(TexEmissive, uvEmissive).rgb * Material.EmissiveFactor.rgb;
+		vec3 emission = texture(nonuniformEXT(sampler2D(BindlessTextures[Material.EmissiveIndex], BindlessSampler)), uvEmissive).rgb * Material.EmissiveFactor.rgb;
 		color.rgb += emission;
 	}
 

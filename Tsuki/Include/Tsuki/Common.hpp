@@ -87,6 +87,7 @@ using SemaphoreHandle              = IntrusivePtr<Semaphore>;
 // Enums and constants.
 constexpr static const int DescriptorSetsPerPool      = 16;
 constexpr static const int MaxColorAttachments        = 8;
+constexpr static const int MaxBindlessDescriptors     = 16384;
 constexpr static const int MaxDescriptorBindings      = 32;
 constexpr static const int MaxDescriptorSets          = 4;
 constexpr static const int MaxPushConstantSize        = 128;

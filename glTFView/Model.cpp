@@ -158,6 +158,11 @@ void Material::Update(tk::Device& device) const {
 	Data.BaseColorFactor = BaseColorFactor;
 	Data.EmissiveFactor  = glm::vec4(EmissiveFactor, 0.0f);
 
+	Data.AlbedoIndex     = bool(Albedo) ? Albedo->BoundIndex : -1;
+	Data.NormalIndex     = bool(Normal) ? Normal->BoundIndex : -1;
+	Data.PBRIndex        = bool(PBR) ? PBR->BoundIndex : -1;
+	Data.OcclusionIndex  = bool(Occlusion) ? Occlusion->BoundIndex : -1;
+	Data.EmissiveIndex   = bool(Emissive) ? Emissive->BoundIndex : -1;
 	Data.AlbedoUV        = bool(Albedo) ? AlbedoUV : -1;
 	Data.NormalUV        = bool(Normal) ? NormalUV : -1;
 	Data.PBRUV           = bool(PBR) ? PBRUV : -1;

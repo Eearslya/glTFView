@@ -244,6 +244,7 @@ class CommandBuffer : public IntrusivePtrEnabled<CommandBuffer, CommandBufferDel
 	                         vk::DeviceSize offset = 0,
 	                         vk::DeviceSize stride = sizeof(vk::DrawIndexedIndirectCommand));
 	void PushConstants(const void* data, vk::DeviceSize offset, vk::DeviceSize range);
+	void SetBindless(uint32_t set, vk::DescriptorSet descriptorSet);
 	void SetIndexBuffer(const Buffer& buffer, vk::DeviceSize offset, vk::IndexType indexType);
 	void SetInputAttachments(uint32_t set, uint32_t firstBinding);
 	void SetProgram(const Program* program);
@@ -296,11 +297,12 @@ class CommandBuffer : public IntrusivePtrEnabled<CommandBuffer, CommandBufferDel
 	bool _isCompute                                                               = false;
 	vk::Pipeline _pipeline;
 	vk::PipelineLayout _pipelineLayout;
-	PipelineLayout* _programLayout          = nullptr;
-	vk::Rect2D _scissor                     = {{0, 0}, {0, 0}};
-	vk::PipelineStageFlags _swapchainStages = {};
-	VertexBindingState _vertexBindings      = {};
-	vk::Viewport _viewport                  = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+	PipelineLayout* _programLayout                                 = nullptr;
+	vk::Rect2D _scissor                                            = {{0, 0}, {0, 0}};
+	vk::PipelineStageFlags _swapchainStages                        = {};
+	VertexBindingState _vertexBindings                             = {};
+	vk::Viewport _viewport                                         = {0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f};
+	std::array<vk::DescriptorSet, MaxDescriptorSets> _bindlessSets = {};
 
 	PipelineCompileInfo _pipelineCompileInfo;
 };

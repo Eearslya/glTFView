@@ -113,6 +113,7 @@ Device::Device(const Context& context)
 		}
 	}
 
+	CreateBindless();
 	CreateStockSamplers();
 	CreateTimelineSemaphores();
 
